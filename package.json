@@ -1,0 +1,20 @@
+{
+  "name": "phq-9-mailsender",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PHUICMT/phq-9-mailsender.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PHUICMT/phq-9-mailsender/issues"
+  },
+  "homepage": "https://github.com/PHUICMT/phq-9-mailsender#readme"
+}
