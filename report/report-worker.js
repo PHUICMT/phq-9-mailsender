@@ -17,16 +17,28 @@ if (uuid != undefined) {
 
   var packedJson = JSON.stringify({ uuid: uuid, to_email: to_email });
   dataFromBackend = postVideoToProcess(packedJson);
-  var Emote = emoteTimeLength(dataFromBackend.total_emotion_time);
 
-  var stringEmote = getEmotePerQuestion(Emote);
-  var stringClickTime = showClickTime(clickTime);
-  var stringReactionTime = getReactionsTimes(reactionTime);
-  var stringBehavior = getBehavior(behavior);
-  var setingGroupsTest = getGroupType(checkBox);
+  if(dataFromBackend != null){
+    var Emote = emoteTimeLength(dataFromBackend.total_emotion_time);
+    var stringEmote = getEmotePerQuestion(Emote);
+    var stringClickTime = showClickTime(clickTime);
+    var stringReactionTime = getReactionsTimes(reactionTime);
+    var stringBehavior = getBehavior(behavior);
+    var setingGroupsTest = getGroupType(checkBox);
 
-
-  parentPort.postMessage();
+    var json = JSON.stringify({
+        "to_email": to_email,
+        "uuid": uuid,
+        "stringEmote": stringEmote,
+        "stringClickTime": stringClickTime,
+        "stringReactionTime": stringReactionTime,
+        "stringBehavior": stringBehavior,
+        "setingGroupsTest": setingGroupsTest
+    });
+    var mail_result = MailSender(json);
+    parentPort.postMessage(mail_result);
+    return mail_result;
+  }
 }
 
 async function postVideoToProcess(json) {
@@ -132,6 +144,7 @@ function getBehavior(behavior) {
             result += "ข้อ " + index + " -> " + item + "\n";
         });
     }
+    return result;
 }
 
 function getEmotePerQuestion(emote) {
@@ -151,15 +164,13 @@ function getEmotePerQuestion(emote) {
                 result += " |Sad| ";
             }
         });
-        return result;
-    }else {
-        return false;
-    } 
+      }
+    return result;
 }
 
-function MailSender(uuid, to_email) {
+function MailSender(json) {
     const res = await axios
-    .post("/send-mail", JSON.stringify({ uuid: uuid, to_email: to_email }), {
+    .post("/send-mail", json, {
       headers: { "Content-Type": "application/json;charset=UTF-8" },
     })
     .then(function (response) {
