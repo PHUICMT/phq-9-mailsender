@@ -10,15 +10,22 @@ const reactionTime = workerData.reactionTime;
 const behavior = workerData.behavior;
 const checkBox = workerData.checkBox;
 
-let dataFromBackend = null;
-
 if (uuid != undefined) {
   parentPort.postMessage("Worker [" + uuid + "] now running...");
 
   var packedJson = JSON.stringify({ uuid: uuid, to_email: to_email });
-  dataFromBackend = postVideoToProcess(packedJson);
+  postVideoToProcess(packedJson)
+    .then((result) => {
+      console.log("Result Backend Is : " + result);
+    })
+    .finally((result) => {
+      var mail_result = processDataFromBackend(result);
+      console.log(mail_result);
+    });
+}
 
-  if(dataFromBackend != null){
+async function processDataFromBackend(dataFromBackend) {
+  if (dataFromBackend != null) {
     var Emote = emoteTimeLength(dataFromBackend.total_emotion_time);
     var stringEmote = getEmotePerQuestion(Emote);
     var stringClickTime = showClickTime(clickTime);
@@ -27,13 +34,13 @@ if (uuid != undefined) {
     var setingGroupsTest = getGroupType(checkBox);
 
     var json = JSON.stringify({
-        "to_email": to_email,
-        "uuid": uuid,
-        "stringEmote": stringEmote,
-        "stringClickTime": stringClickTime,
-        "stringReactionTime": stringReactionTime,
-        "stringBehavior": stringBehavior,
-        "setingGroupsTest": setingGroupsTest
+      to_email: to_email,
+      uuid: uuid,
+      stringEmote: stringEmote,
+      stringClickTime: stringClickTime,
+      stringReactionTime: stringReactionTime,
+      stringBehavior: stringBehavior,
+      setingGroupsTest: setingGroupsTest,
     });
     var mail_result = MailSender(json);
     parentPort.postMessage(mail_result);
@@ -42,17 +49,12 @@ if (uuid != undefined) {
 }
 
 async function postVideoToProcess(json) {
-  const res = await axios
+  return axios
     .post("/process-video", json, {
       headers: { "Content-Type": "application/json" },
     })
-    .then(function (response) {
-      console.log(response);
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
-  return res;
+    .then((response) => response.data)
+    .catch((error) => console.log(error));
 }
 
 async function emoteTimeLength(total_emotion_time) {
@@ -101,83 +103,78 @@ async function emoteTimeLength(total_emotion_time) {
   return allEmote;
 }
 
-function getGroupType(checkBox){
-    result = "กลุ่มผู้เข้าทดสอบ : ";
-    if(checkBox == 1){
-        result = "ปกติ"; 
-    }
-    if(checkBox == 2){
-        result = "มีภาวะซึมเศร้า";
-    }
-    if(checkBox == 3){
-        result = "กำลังรักษา";
-    }
-    return result;
+function getGroupType(checkBox) {
+  result = "กลุ่มผู้เข้าทดสอบ : ";
+  if (checkBox == 1) {
+    result = "ปกติ";
+  }
+  if (checkBox == 2) {
+    result = "มีภาวะซึมเศร้า";
+  }
+  if (checkBox == 3) {
+    result = "กำลังรักษา";
+  }
+  return result;
 }
 
-function getReactionsTimes (reactionTime) {
-    var result = "";
-    reactionTime.map((timeLong,index) => {
-        result += "ข้อ " + index + " -> ใช้เวลา " (timeLong/1000) + "\n";
-    });
-    return result;
+function getReactionsTimes(reactionTime) {
+  var result = "";
+  reactionTime.map((timeLong, index) => {
+    result += "ข้อ " + index + " -> ใช้เวลา "(timeLong / 1000) + "\n";
+  });
+  return result;
 }
 
 function showClickTime(clickTime) {
-    var timeClick = "";
-    clickTime.map((click,index) => {
-        var question = "ข้อ" + index + " -> ";
-        if (click === null) {
-            question += 'NOT CLICKED';
-        }else {
-            question += click + ' น.';
-        }
-        timeClick += question + "\n";
-    });
-    return timeClick;
+  var timeClick = "";
+  clickTime.map((click, index) => {
+    var question = "ข้อ" + index + " -> ";
+    if (click === null) {
+      question += "NOT CLICKED";
+    } else {
+      question += click + " น.";
+    }
+    timeClick += question + "\n";
+  });
+  return timeClick;
 }
 
 function getBehavior(behavior) {
-    var result = "";
-    if (typeof (behavior) !== 'undefined') {
-        behavior.map((item,index) => {
-            result += "ข้อ " + index + " -> " + item + "\n";
-        });
-    }
-    return result;
+  var result = "";
+  if (typeof behavior !== "undefined") {
+    behavior.map((item, index) => {
+      result += "ข้อ " + index + " -> " + item + "\n";
+    });
+  }
+  return result;
 }
 
 function getEmotePerQuestion(emote) {
-    var result = "";
-    if (typeof (emote) !== 'undefined'){ 
-        emote.map((perQuestion) => {
-            if(perQuestion[0]){
-                result += " |Angry| ";
-            }
-            if(perQuestion[1]){
-                result += " |Happy| ";
-            }
-            if(perQuestion[2]){
-                result += " |Neutral| ";
-            }
-            if(perQuestion[3]){
-                result += " |Sad| ";
-            }
-        });
+  var result = "";
+  if (typeof emote !== "undefined") {
+    emote.map((perQuestion) => {
+      if (perQuestion[0]) {
+        result += " |Angry| ";
       }
-    return result;
+      if (perQuestion[1]) {
+        result += " |Happy| ";
+      }
+      if (perQuestion[2]) {
+        result += " |Neutral| ";
+      }
+      if (perQuestion[3]) {
+        result += " |Sad| ";
+      }
+    });
+  }
+  return result;
 }
 
-function MailSender(json) {
-    const res = await axios
+async function MailSender(json) {
+  return axios
     .post("/send-mail", json, {
       headers: { "Content-Type": "application/json;charset=UTF-8" },
     })
-    .then(function (response) {
-      console.log(response);
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
-  return res;
+    .then((response) => response.data)
+    .catch((error) => console.log(error));
 }

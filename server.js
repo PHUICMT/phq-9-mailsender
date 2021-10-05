@@ -5,33 +5,34 @@ const app = express();
 
 app.use(express.json());
 
-app.post("/select-to-process", function (req, res) {
+app.post("/node-select-to-process", function (req, res) {
   if (!req.body) {
     console.log("No file received");
     return res.status(400).json({ message: "Can't Accept" });
   } else {
+    console.log(req.body);
     const worker = new Worker("./report/report-worker.js", {
       workerData: req.body,
     });
 
-    res.status(200);
-
     worker.on("message", (result) => {
       console.log(result.message);
-      if (result.message == true) {
-        res.status(400).json({ message: "Process finished!" });
+      if (result.message != null || result.message != undefined) {
         console.log("Worker running: " + result);
+        return res.status(200).json({ message: "Process finished!" });
       }
     });
 
     worker.on("error", (error) => {
-      res.status(400);
       console.log(error);
+      return res.status(400).json({ message: "Process Failed!" });
     });
 
     worker.on("exit", (exitCode) => {
       console.log(`It exited with code ${exitCode}`);
     });
+
+    return res.status(200).json({ message: "Backend Accepted!" });
   }
 });
 
