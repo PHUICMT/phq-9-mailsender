@@ -7,6 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
+    "start:worker": "node --experimental-worker server.js",
     "start:dev": "nodemon server.js"
   },
   "repository": {
@@ -21,7 +22,10 @@
   },
   "homepage": "https://github.com/PHUICMT/phq-9-mailsender#readme",
   "dependencies": {
+    "@koale/useworker": "^4.0.2",
+    "amqplib": "^0.8.0",
     "axios": "^0.21.4",
+    "eslint-plugin-react-hooks": "^4.2.0",
     "express": "^4.17.1",
     "form-data": "^4.0.0",
     "lodash": "^4.17.21",

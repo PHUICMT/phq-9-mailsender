@@ -1,27 +1,47 @@
-const { parentPort, workerData } = require("worker_threads");
+// const { parentPort, workerData } = require("worker_threads");
 const axios = require("axios").default;
+let uuid = null;
+let to_email = null;
+let start_end_time = null;
+let fontEndTimeStamp = null;
+let clickTime = null;
+let reactionTime = null;
+let behavior = null;
+let checkBox = null;
 
-const uuid = workerData.uuid;
-const to_email = workerData.to_email;
-const start_end_time = workerData.start_end_time;
-const fontEndTimeStamp = workerData.fontEndTimeStamp;
-const clickTime = workerData.clickTime;
-const reactionTime = workerData.reactionTime;
-const behavior = workerData.behavior;
-const checkBox = workerData.checkBox;
-
-if (uuid != undefined) {
-  parentPort.postMessage("Worker [" + uuid + "] now running...");
-
-  var packedJson = JSON.stringify({ uuid: uuid, to_email: to_email });
-  postVideoToProcess(packedJson)
-    .then((result) => {
-      console.log("Result Backend Is : " + result);
-    })
-    .finally((result) => {
-      var mail_result = processDataFromBackend(result);
-      console.log(mail_result);
+const reportWorker = (workerData) => {
+  uuid = workerData.uuid;
+  to_email = workerData.to_email;
+  start_end_time = workerData.start_end_time;
+  fontEndTimeStamp = workerData.fontEndTimeStamp;
+  clickTime = workerData.clickTime;
+  reactionTime = workerData.reactionTime;
+  behavior = workerData.behavior;
+  checkBox = workerData.checkBox;
+  if (uuid != null) {
+    var packedJson = JSON.stringify({
+      uuid: uuid,
+      to_email: to_email,
+      start_end_time: start_end_time,
+      fontEndTimeStamp: fontEndTimeStamp,
+      clickTime: clickTime,
+      reactionTime: reactionTime,
+      behavior: behavior,
+      checkBox: checkBox,
     });
+    postVideoToProcess(packedJson).then((result) => {
+      console.log("Result Backend Is : " + result);
+    });
+  }
+};
+
+async function postVideoToProcess(json) {
+  return axios
+    .post("http://server:5000/process-video", json, {
+      headers: { "Content-Type": "application/json" },
+    })
+    .then((response) => response.data)
+    .catch((error) => console.log(error));
 }
 
 async function processDataFromBackend(dataFromBackend) {
@@ -42,16 +62,20 @@ async function processDataFromBackend(dataFromBackend) {
       stringBehavior: stringBehavior,
       setingGroupsTest: setingGroupsTest,
     });
-    var mail_result = MailSender(json);
-    parentPort.postMessage(mail_result);
-    return mail_result;
+    var mail_result = null;
+    MailSender(json).then((result) => {
+      mail_result = result;
+    });
+    if (mail_result != undefined) {
+      return mail_result;
+    }
   }
 }
 
-async function postVideoToProcess(json) {
+async function MailSender(json) {
   return axios
-    .post("/process-video", json, {
-      headers: { "Content-Type": "application/json" },
+    .post("http://server:5000/send-mail", json, {
+      headers: { "Content-Type": "application/json;charset=UTF-8" },
     })
     .then((response) => response.data)
     .catch((error) => console.log(error));
@@ -170,11 +194,24 @@ function getEmotePerQuestion(emote) {
   return result;
 }
 
-async function MailSender(json) {
-  return axios
-    .post("/send-mail", json, {
-      headers: { "Content-Type": "application/json;charset=UTF-8" },
-    })
-    .then((response) => response.data)
-    .catch((error) => console.log(error));
-}
+module.exports = { reportWorker, processDataFromBackend };
+
+// async () => {
+//   if (uuid != undefined) {
+//     parentPort.postMessage({ fromWorker: workerData });
+
+//     var packedJson = JSON.stringify({ uuid: uuid, to_email: to_email });
+//     postVideoToProcess(packedJson)
+//       .then((result) => {
+//         console.log("Result Backend Is : " + result);
+//         console.log(result);
+//       })
+//       .finally(async (result) => {
+//         console.log("Starting processDataFromBackend");
+//         return processDataFromBackend(result).then((mail_result) => {
+//           console.log(": mail_result : ");
+//           console.log(mail_result);
+//         });
+//       });
+//   }
+// };

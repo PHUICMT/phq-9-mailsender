@@ -1,78 +1,90 @@
-const { Worker } = require("worker_threads");
+const tools = require("./report/report-worker");
 const express = require("express");
 
+const amqp = require("amqplib"); // .connect("amqp://admin:admin@rabbitmq:5672");
+const queue = "dataFromBackend";
 const app = express();
+let rabbitConnection = null;
 
 app.use(express.json());
+start();
 
 app.post("/node-select-to-process", function (req, res) {
   if (!req.body) {
     console.log("No file received");
     return res.status(400).json({ message: "Can't Accept" });
   } else {
-    console.log(req.body);
-    const worker = new Worker("./report/report-worker.js", {
-      workerData: req.body,
-    });
-
-    worker.on("message", (result) => {
-      console.log(result.message);
-      if (result.message != null || result.message != undefined) {
-        console.log("Worker running: " + result);
-        return res.status(200).json({ message: "Process finished!" });
-      }
-    });
-
-    worker.on("error", (error) => {
-      console.log(error);
-      return res.status(400).json({ message: "Process Failed!" });
-    });
-
-    worker.on("exit", (exitCode) => {
-      console.log(`It exited with code ${exitCode}`);
-    });
-
-    return res.status(200).json({ message: "Backend Accepted!" });
+    tools.reportWorker(req.body);
   }
+  return res.status(200).json({ message: "Backend Accepted!" });
 });
 
 app.listen(5001, () => {
   console.log("Mail Sender Started!! 5001");
 });
 
-// app.post("/node-video-uploads", upload.single("webcam"), async function (
-//   req,
-//   res
-// ) {
-//   if (!req.file) {
-//     console.log("No file received");
-//     return res.status(400).json({ message: "Can't upload" });
-//   } else {
-//     await writeFile(req.file).then(async () => {
-//       res.status(200).json({ message: "success" });
-//       await postVideo(req.file).then(async (fromBackend) => {
-//         console.log(fromBackend);
-//         await removeFile(req.file.originalname);
-//       });
-//     });
-//   }
-// });
+function start() {
+  amqp.connect("amqp://admin:admin@rabbitmq:5672/" + "?heartbeat=60", function (
+    err,
+    conn
+  ) {
+    if (err) {
+      console.error("[AMQP]", err.message);
+      return setTimeout(start, 1000);
+    }
+    conn.on("error", function (err) {
+      if (err.message !== "Connection closing") {
+        console.error("[AMQP] conn error", err.message);
+      }
+    });
+    conn.on("close", function () {
+      console.error("[AMQP] reconnecting");
+      return setTimeout(start, 1000);
+    });
+    console.log("[AMQP] connected");
+    rabbitConnection = conn;
+    startWorker();
+  });
+}
 
-// function writeFile(file) {
-//   return new Promise((resolve, reject) => {
-//     fs.writeFile(file.originalname, file.buffer, function (error) {
-//       if (error) reject(error);
-//       console.log("file received");
-//     });
-//     resolve("file created successfully with handcrafted Promise!");
-//   });
-// }
+function startWorker() {
+  rabbitConnection.createChannel(function (err, ch) {
+    if (closeOnErr(err)) return;
+    ch.on("error", function (err) {
+      console.error("[AMQP] channel error", err.message);
+    });
+    ch.on("close", function () {
+      console.log("[AMQP] channel closed");
+    });
 
-// function removeFile(originalname) {
-//   return new Promise((resolve, reject) => {
-//     fs.unlink(originalname, (error) => {
-//       if (error) reject(error);
-//     });
-//     resolve("file removed successfully!");
-//   });
-// }
+    ch.prefetch(10);
+    ch.assertQueue(queue, { durable: true }, function (err, _ok) {
+      if (closeOnErr(err)) return;
+      ch.consume("jobs", processMsg, { noAck: false });
+      console.log("Worker is started");
+    });
+  });
+}
+
+function processMsg(msg) {
+  work(msg, function (ok) {
+    try {
+      if (ok) ch.ack(msg);
+      else ch.reject(msg, true);
+    } catch (e) {
+      closeOnErr(e);
+    }
+  });
+}
+
+function work(msg, cb) {
+  console.log("processing : ", msg.content.toString());
+  cb(true);
+}
+
+function closeOnErr(err) {
+  if (!err) return false;
+  console.error("[AMQP] error", err);
+  rabbitConnection.close();
+  return true;
+}
