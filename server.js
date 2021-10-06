@@ -7,7 +7,6 @@ const app = express();
 let rabbitConnection = null;
 
 app.use(express.json());
-start();
 
 app.post("/node-select-to-process", function (req, res) {
   if (!req.body) {
@@ -19,32 +18,32 @@ app.post("/node-select-to-process", function (req, res) {
   return res.status(200).json({ message: "Backend Accepted!" });
 });
 
-app.listen(5001, () => {
-  console.log("Mail Sender Started!! 5001");
-});
+start()
+  .then(() => app.listen(5001, () => console.log("Mail Sender Started!! 5001")))
+  .catch((err) => console.error(err));
 
 function start() {
-  amqp.connect("amqp://admin:admin@rabbitmq:5672/" + "?heartbeat=60", function (
-    err,
-    conn
-  ) {
-    if (err) {
-      console.error("[AMQP]", err.message);
-      return setTimeout(start, 1000);
-    }
-    conn.on("error", function (err) {
-      if (err.message !== "Connection closing") {
-        console.error("[AMQP] conn error", err.message);
+  return amqp.connect(
+    "amqp://admin:admin@rabbitmq:5672/" + "?heartbeat=60",
+    function (err, conn) {
+      if (err) {
+        console.error("[AMQP]", err.message);
+        return setTimeout(start, 1000);
       }
-    });
-    conn.on("close", function () {
-      console.error("[AMQP] reconnecting");
-      return setTimeout(start, 1000);
-    });
-    console.log("[AMQP] connected");
-    rabbitConnection = conn;
-    startWorker();
-  });
+      conn.on("error", function (err) {
+        if (err.message !== "Connection closing") {
+          console.error("[AMQP] conn error", err.message);
+        }
+      });
+      conn.on("close", function () {
+        console.error("[AMQP] reconnecting");
+        return setTimeout(start, 1000);
+      });
+      console.log("[AMQP] connected");
+      rabbitConnection = conn;
+      startWorker();
+    }
+  );
 }
 
 function startWorker() {
