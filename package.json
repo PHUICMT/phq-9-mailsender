@@ -22,18 +22,8 @@
   },
   "homepage": "https://github.com/PHUICMT/phq-9-mailsender#readme",
   "dependencies": {
-    "@koale/useworker": "^4.0.2",
-    "amqplib": "^0.8.0",
     "axios": "^0.21.4",
-    "eslint-plugin-react-hooks": "^4.2.0",
     "express": "^4.17.1",
-    "form-data": "^4.0.0",
-    "lodash": "^4.17.21",
-    "multer": "^1.4.3",
-    "node-html-to-image": "^3.2.0",
-    "node-sass": "^6.0.1",
-    "nodemon": "^2.0.13",
-    "puppeteer": "^10.4.0",
-    "react": "^17.0.2"
+    "nodemon": "^2.0.13"
   }
 }
