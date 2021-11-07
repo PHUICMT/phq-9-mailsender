@@ -7,6 +7,8 @@ let clickTime = null;
 let reactionTime = null;
 let behavior = null;
 let checkBox = null;
+let result = null;
+let info = null;
 
 const reportWorker = (workerData) => {
   uuid = workerData.uuid;
@@ -17,6 +19,9 @@ const reportWorker = (workerData) => {
   reactionTime = workerData.reactionTime;
   behavior = workerData.behavior;
   checkBox = workerData.checkBox;
+  result = workerData.result;
+  info = workerData.info;
+
   if (uuid != null) {
     var packedJson = JSON.stringify({
       uuid: uuid,
@@ -27,6 +32,8 @@ const reportWorker = (workerData) => {
       reactionTime: reactionTime,
       behavior: behavior,
       checkBox: checkBox,
+      result: result,
+      info: info,
     });
     postVideoToProcess(packedJson).then((result) => {
       console.log("Result Backend Is : " + result);
